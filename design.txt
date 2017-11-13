@@ -1,8 +1,9 @@
 Plan:
 
-It seems the core idea of the REST API is that it will tell you on each level what actions you can
-take to progress in the tree when you invoke GET. It should give you data relevant to that level (if
-it exists), and tell you what you can do next.
+It seems we want to tell the user on each level what actions you can take to progress in the tree
+when you invoke GET. It should give you data relevant to that level (if it exists), and tell you
+what you can do next.
+
     - API structure:
 
         - /
@@ -12,6 +13,9 @@ it exists), and tell you what you can do next.
                   really just provide the current level and a way to access the next? It doesn't
                   make any sense for us to give every single detail in the first query. If the
                   client wants more info, it can request it using the the next link I provide.
+                  Otherwise we have a pyramid that gets smaller as we go. Why provide everything at
+                  the start when the client doesn't even know what they want yet?
+
 
         - /thermostats
             - give a list of thermostats available in JSON format. Do we want to provide all

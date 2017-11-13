@@ -10,8 +10,11 @@ render = web.template.render('templates/')
 
 urls = (
     '/', 'index',
-    '/thermostats/(\d+)', 'thermostat'
+    '/thermostats/?', 'deviceList',
+    '/thermostats/(\d+)', 'thermostat',
+    '/thermostats/(\d+)/test', 'test',
 )
+
 
 class OperatingMode(Enum):
     OFF  = 1
@@ -30,6 +33,7 @@ def getUniqueID():
     uniqueID += 1
     return uID
 
+
 class Database(object):
     def __init__(self, Thermostats):
         self._Thermostats = Thermostats
@@ -37,6 +41,7 @@ class Database(object):
     @property
     def Thermostats(self):
         return self._Thermostats
+
 
 class Thermostat(object):
      def __init__(self, ID, Name, OperatingMode):
@@ -62,10 +67,7 @@ class index:
     def GET(self, name):
         return render.index(myName)
 
-    def POST(self, name):
-        testJSON = { 'name': name, 'swagalicious': 'lishaswagic' }
-        web.header('Content-Type', 'application/json')
-        return json.dumps(testJSON)
+""" ========================================= GLOBALS ========================================= """
 
 myName = 'Brien'
 uniqueID = 0
@@ -73,6 +75,9 @@ database = Database([
     Thermostat(getUniqueID(), "Main-Floor Thermostat", FanMode.AUTO),
     Thermostat(getUniqueID(), "Basement Thermostat", FanMode.AUTO)
 ])
+
+""" ======================================= END GLOBALS ======================================= """
+
 
 if __name__ == "__main__":
     app = web.application(urls, globals())
@@ -85,9 +90,18 @@ class deviceList:
         web.header('Content-Type', 'application/json')
         return json.dumps(thermoJSON, sort_keys = True, indent = 4)
 
+
 class thermostat:
     def GET(self, UID):
         thermo = database.Thermostats[int(UID)]
         thermoJSON = {'name': thermo.Name, 'ID': thermo.ID}
         web.header('Content-Type', 'application/json')
         return json.dumps(thermoJSON, sort_keys = True, indent = 4)
+
+
+class test:
+    def GET(self, UID):
+        testStr = 'This is a test. Do NOT panic. The thermostat you selected is '
+        testStr += database.Thermostats[int(UID)].Name + 'and it is about to go nuclear. I guess \
+         it wasn\'t really a test then.\n'
+        return testStr
