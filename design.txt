@@ -1,0 +1,34 @@
+Plan:
+
+It seems the core idea of the REST API is that it will tell you on each level what actions you can
+take to progress in the tree when you invoke GET. It should give you data relevant to that level (if
+it exists), and tell you what you can do next.
+    - API structure:
+
+        - /
+            - provide a list of commands in JSON format
+                - this means we need to list the thermostats command, and then the commands within
+                  thermostat, and so on. AKSHUALLY, thinking about it a second longer, shouldn't it
+                  really just provide the current level and a way to access the next? It doesn't
+                  make any sense for us to give every single detail in the first query. If the
+                  client wants more info, it can request it using the the next link I provide.
+
+        - /thermostat
+            - give a list of thermostats available in JSON format. Do we want to provide all
+              information for each thermostat? Is this really just showing one level below GET
+              on / ? That seems redundant and silly. Perhaps it should just be the ID and Name
+              of each thermostat. I still need to understand REST a bit more clearly.
+
+        - /thermostat/(\d+)
+            - provide JSON detailing information about the thermostat specified and possible
+              actions
+
+        - /thermostat/(\d+)/property
+            - enumerate the current state of that property and ways to modify it
+
+        - /thermostat/(\d+)/property/(\d+)
+
+
+    - Errors: Let's try and use the standard errors defined in webapi.py so any client can parse
+      them. We can customize the message, but let's return standard errors when, for example, the
+      client attempts to invoke a change in the heat point for a non-existent thermostat.
