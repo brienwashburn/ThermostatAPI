@@ -8,11 +8,19 @@ from enum import Enum
 ============================================================================================== """
 render = web.template.render('templates/')
 
+# all calls are idempotent
 urls = (
-    '/', 'index',
-    '/thermostats/?', 'deviceList',
-    '/thermostats/(\d+)', 'thermostat',
-    '/thermostats/(\d+)/test', 'test',
+    '/', 'index',                               # GET only
+    '/thermostats/?', 'deviceList',             # GET only
+    '/thermostats/(\d+)/?',    'thermostat',    # GET only
+    '/thermostats/(\d+)/id',   'thermostatid',  # GET only
+    '/thermostats/(\d+)/temp', 'temp',          # GET only
+    '/thermostats/(\d+)/name', 'name',        # GET, PUT
+    '/thermostats/(\d+)/name/([A-Za-z0-9\-\_]+)', 'setname',  # PUT
+    '/thermostats/(\d+)/mode', 'mode',          # GET, PUT
+    '/thermostats/(\d+)/cool', 'cool',          # GET, PUT
+    '/thermostats/(\d+)/heat', 'heat',          # GET, PUT
+    '/thermostats/(\d+)/fan',  'fan',           # GET, PUT
 )
 
 
@@ -26,6 +34,8 @@ class FanMode(Enum):
     AUTO = 1
     ON   = 2
 
+def niceFormat(ajson):
+    return json.dumps(ajson, sort_keys = True, indent = 4)
 
 def getUniqueID():
     global uniqueID
@@ -33,6 +43,8 @@ def getUniqueID():
     uniqueID += 1
     return uID
 
+def getThermostat(UID):
+    return next((therm for therm in database.Thermostats if therm.ID == int(UID)), None)
 
 class Database(object):
     def __init__(self, Thermostats):
@@ -62,11 +74,18 @@ class Thermostat(object):
      def CurrentTemp(self):
          return self._CurrentTemp
 
+def link(href, rel, method):
+    return {'href': href, 'rel': rel, 'method': method }
 
 class index:
-    def GET(self, name):
-        return render.index(myName)
-
+    def GET(self):
+        indexStr = [{ "links": {
+                        "href": "/thermostats",
+                        "rel": "list",
+                        "method": "GET"
+                     }}]
+        # return json.dumps(indexStr, sort_keys = True, indent = 4)
+        return niceFormat(indexStr)
 """ ========================================= GLOBALS ========================================= """
 
 myName = 'Brien'
@@ -84,24 +103,45 @@ if __name__ == "__main__":
     app.run()
 
 
+
+
+
+
+
+
+
 class deviceList:
     def GET(self):
         thermoJSON = [{'name': therm.Name, 'ID': therm.ID} for therm in database.Thermostats]
         web.header('Content-Type', 'application/json')
-        return json.dumps(thermoJSON, sort_keys = True, indent = 4)
+        return niceFormat(thermoJSON)
 
 
 class thermostat:
     def GET(self, UID):
         thermo = database.Thermostats[int(UID)]
-        thermoJSON = {'name': thermo.Name, 'ID': thermo.ID}
+        thermoJSON = {'name': thermo.Name, 'ID': thermo.ID }
         web.header('Content-Type', 'application/json')
-        return json.dumps(thermoJSON, sort_keys = True, indent = 4)
+        return niceFormat(thermoJSON)
 
 
-class test:
+class temp:
     def GET(self, UID):
-        testStr = 'This is a test. Do NOT panic. The thermostat you selected is '
-        testStr += database.Thermostats[int(UID)].Name + 'and it is about to go nuclear. I guess \
-         it wasn\'t really a test then.\n'
+        therm = getThermostat(UID)
+        if therm is None:
+            return web.badrequest('The thermostat ID specified does not exist.')
+        else:
+            testStr = 'This is a test. Do NOT panic. The thermostat you selected is '
+            testStr += therm.Name + ' and it is about to go nuclear. I guess \
+             it wasn\'t really a test then.\n'
+
         return testStr
+
+
+class name:
+    def GET(self, UID):
+        return 'GET on name\n'
+
+class setname:
+    def PUT(self, UID, name):
+        return 'PUT on name. Value provided is ' + name + '\n'

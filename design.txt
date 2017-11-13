@@ -4,6 +4,10 @@ It seems we want to tell the user on each level what actions you can take to pro
 when you invoke GET. It should give you data relevant to that level (if it exists), and tell you
 what you can do next.
 
+The biggest question for me right now is how to most efficiently embed the options into the API.
+Obviously hard-coding isn't acceptable in the long-term, but this is more about showing how I
+would format the API, so let's at least start with that.
+
     - API structure:
 
         - /
@@ -15,7 +19,6 @@ what you can do next.
                   client wants more info, it can request it using the the next link I provide.
                   Otherwise we have a pyramid that gets smaller as we go. Why provide everything at
                   the start when the client doesn't even know what they want yet?
-
 
         - /thermostats
             - give a list of thermostats available in JSON format. Do we want to provide all
@@ -32,7 +35,6 @@ what you can do next.
 
         - /thermostats/(\d+)/property/(\d+)
             - modify numerical properties
-
 
     - Errors: Let's try and use the standard errors defined in webapi.py so any client can parse
       them. We can customize the message, but let's return standard errors when, for example, the
