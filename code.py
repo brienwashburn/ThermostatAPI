@@ -23,21 +23,13 @@ urls = (
     '/thermostats/(\d+)/heat/?', 'heat',
     '/thermostats/(\d+)/heat/(\d+)', 'setheat',
     '/thermostats/(\d+)/fan/?',  'fan',
-    '/thermostats/(\d+)/fan/(\d+)',  'setfan',
+    '/thermostats/(\d+)/fan/([A-Za-z0-9\-\_]+)',  'setfan',
     '/thermostats/(\d+)/mode/?', 'mode',
-    '/thermostats/(\d+)/mode/(\d+)', 'setmode',
+    '/thermostats/(\d+)/mode/([A-Za-z0-9\-\_]+)', 'setmode',
 )
 
 
-class OperatingMode(Enum):
-    OFF  = 1
-    COOL = 2
-    HEAT = 3
-
-
-class FanMode(Enum):
-    AUTO = 1
-    ON   = 2
+""" ======================================== UTILITIES ======================================== """
 
 def niceFormat(ajson):
     return json.dumps(ajson, sort_keys = True, indent = 4)
@@ -63,6 +55,21 @@ def getURL(path = None):
 
 def link(href, method, rel):
     return {'href': href, 'rel': rel, 'method': method }
+
+""" ====================================== END UTILITIES ====================================== """
+
+
+""" ========================================= TYPES ========================================= """
+
+class OperatingMode(Enum):
+    OFF  = 1
+    COOL = 2
+    HEAT = 3
+
+
+class FanMode(Enum):
+    AUTO = 1
+    ON   = 2
 
 class Database(object):
     def __init__(self, Thermostats):
@@ -91,6 +98,7 @@ class Thermostat(object):
      def CurrentTemp(self):
          return random.randint(65, 67)
 
+""" ======================================= END TYPES ======================================= """
 
 """ ========================================= GLOBALS ========================================= """
 
@@ -116,10 +124,13 @@ links = {
 
 """ ======================================= END GLOBALS ======================================= """
 
+""" ======================================= INITIALIZE ======================================= """
 
 if __name__ == "__main__":
     app = web.application(urls, globals())
     app.run()
+
+""" ===================================== END INITIALIZE ===================================== """
 
 
 
@@ -331,7 +342,6 @@ class setcool:
     def DELETE(self, UID, temp):
         return web.notfound()
 
-""" ====================================== DONE ====================================== """
 
 class heat:
     def GET(self, UID):
@@ -380,6 +390,116 @@ class setheat:
         return web.notfound()
 
 
+class fan:
+    def GET(self, UID):
+        therm = getThermostat(UID)
+        if therm is None:
+            return web.badrequest()
+        else:
+            fanMode = [{
+                'Fan': str(therm.FanMode),
+                'links': [
+                    link(getURL(), 'GET', 'self'),
+                    link(getURL(links['str']), 'PUT', 'edit')
+                ]
+            }]
+
+        return niceFormat(fanMode)
+
+    def PUT(self, UID):
+        return web.notfound()
+    def POST(self, UID):
+        return web.notfound()
+    def DELETE(self, UID):
+        return web.notfound()
+
+class setfan:
+    def PUT(self, UID, fan):
+        therm = getThermostat(UID)
+        if therm is None:
+            return web.badrequest()
+        else:
+            f = fan.upper()
+            if f == 'AUTO':
+                mode = FanMode.AUTO
+            elif f == 'ON':
+                mode = FanMode.ON
+            else:
+                return web.badrequest()
+
+            therm.FanMode = mode
+            fanMode = [{
+                'Fan': str(therm.FanMode),
+                'links': [
+                    link(getURL(links['str']), 'PUT', 'edit')
+                ]
+            }]
+
+        return niceFormat(fanMode)
+
+    def GET(self, UID, fan):
+        return web.notfound()
+    def POST(self, UID, fan):
+        return web.notfound()
+    def DELETE(self, UID, fan):
+        return web.notfound()
+
+""" ====================================== DONE ====================================== """
+
+class mode:
+    def GET(self, UID):
+        therm = getThermostat(UID)
+        if therm is None:
+            return web.badrequest()
+        else:
+            operatingMode = [{
+                'Fan': str(therm.OperatingMode),
+                'links': [
+                    link(getURL(), 'GET', 'self'),
+                    link(getURL(links['str']), 'PUT', 'edit')
+                ]
+            }]
+
+        return niceFormat(operatingMode)
+
+    def PUT(self, UID):
+        return web.notfound()
+    def POST(self, UID):
+        return web.notfound()
+    def DELETE(self, UID):
+        return web.notfound()
+
 class setmode:
     def PUT(self, UID, mode):
-        return mode
+        therm = getThermostat(UID)
+        if therm is None:
+            return web.badrequest()
+        else:
+            o = mode.upper()
+            if o == 'OFF':
+                mode = OperatingMode.OFF
+            elif o == 'COOL':
+                mode = OperatingMode.COOL
+            elif o == 'HEAT':
+                mode = OperatingMode.HEAT
+            else:
+                return web.badrequest()
+
+            therm.OperatingMode = mode
+            operatingMode = [{
+                'OperatingMode': str(therm.OperatingMode),
+                'links': [
+                    link(getURL(links['str']), 'PUT', 'edit')
+                ]
+            }]
+
+        return niceFormat(operatingMode)
+
+    def GET(self, UID, mode):
+        return web.notfound()
+    def POST(self, UID, mode):
+        return web.notfound()
+    def DELETE(self, UID, mode):
+        return web.notfound()
+
+""" ======================================= END HANDLERS ======================================= """
