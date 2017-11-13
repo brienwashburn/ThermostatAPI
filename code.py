@@ -2,15 +2,15 @@ import web
 import json
 from enum import Enum
 
-""" ==============================================================================
-    LET'S NOT USE THE TEMPLATES YET. WE CAN REFACTOR ONCE WE HAVE THE BASE DONE. TAKE NEW
+""" ==============================================================================================
+    LET'S (MOSTLY)NOT USE THE TEMPLATES YET. WE CAN REFACTOR ONCE WE HAVE THE BASE DONE. TAKE NEW
     CONCEPTS ONE AT A TIME
-    ============================================================================== """
+============================================================================================== """
 render = web.template.render('templates/')
 
 urls = (
     '/', 'index',
-    '/thermostat', 'thermo'
+    '/thermostats/(\d+)', 'thermostat'
 )
 
 class OperatingMode(Enum):
@@ -30,6 +30,13 @@ def getUniqueID():
     uniqueID += 1
     return uID
 
+class Database(object):
+    def __init__(self, Thermostats):
+        self._Thermostats = Thermostats
+
+    @property
+    def Thermostats(self):
+        return self._Thermostats
 
 class Thermostat(object):
      def __init__(self, ID, Name, OperatingMode):
@@ -53,9 +60,7 @@ class Thermostat(object):
 
 class index:
     def GET(self, name):
-        # no templates yet
         return render.index(myName)
-        # return 'hi'
 
     def POST(self, name):
         testJSON = { 'name': name, 'swagalicious': 'lishaswagic' }
@@ -64,31 +69,25 @@ class index:
 
 myName = 'Brien'
 uniqueID = 0
-therm0 = Thermostat(getUniqueID(), "Main-Floor Thermostat", FanMode.AUTO)
-therm1 = Thermostat(getUniqueID(), "Basement Thermostat", FanMode.AUTO)
-
+database = Database([
+    Thermostat(getUniqueID(), "Main-Floor Thermostat", FanMode.AUTO),
+    Thermostat(getUniqueID(), "Basement Thermostat", FanMode.AUTO)
+])
 
 if __name__ == "__main__":
-    # global database
-    # database = Database(Thermostat(getUniqueID(), "Main floor", FanMode.AUTO))
-
     app = web.application(urls, globals())
     app.run()
 
 
-class thermo:
+class deviceList:
     def GET(self):
-        global therm0
-        thermoJSON = { 'name': therm0.Name, 'ID': therm0.ID }
+        thermoJSON = [{'name': therm.Name, 'ID': therm.ID} for therm in database.Thermostats]
         web.header('Content-Type', 'application/json')
-        return json.dumps(thermoJSON)
+        return json.dumps(thermoJSON, sort_keys = True, indent = 4)
 
-
-
-class Database(object):
-    def __init__(self, Thermostats):
-        self._Thermostats = Thermostats
-
-    @property
-    def Thermostats(self):
-        return self._Thermostats
+class thermostat:
+    def GET(self, UID):
+        thermo = database.Thermostats[int(UID)]
+        thermoJSON = {'name': thermo.Name, 'ID': thermo.ID}
+        web.header('Content-Type', 'application/json')
+        return json.dumps(thermoJSON, sort_keys = True, indent = 4)

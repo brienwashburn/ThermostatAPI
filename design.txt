@@ -13,20 +13,21 @@ it exists), and tell you what you can do next.
                   make any sense for us to give every single detail in the first query. If the
                   client wants more info, it can request it using the the next link I provide.
 
-        - /thermostat
+        - /thermostats
             - give a list of thermostats available in JSON format. Do we want to provide all
               information for each thermostat? Is this really just showing one level below GET
               on / ? That seems redundant and silly. Perhaps it should just be the ID and Name
               of each thermostat. I still need to understand REST a bit more clearly.
 
-        - /thermostat/(\d+)
+        - /thermostats/(\d+)
             - provide JSON detailing information about the thermostat specified and possible
               actions
 
-        - /thermostat/(\d+)/property
+        - /thermostats/(\d+)/property
             - enumerate the current state of that property and ways to modify it
 
-        - /thermostat/(\d+)/property/(\d+)
+        - /thermostats/(\d+)/property/(\d+)
+            - modify numerical properties
 
 
     - Errors: Let's try and use the standard errors defined in webapi.py so any client can parse
