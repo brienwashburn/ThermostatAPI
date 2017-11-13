@@ -1,5 +1,6 @@
 import web
 import json
+import random
 from enum import Enum
 
 """ ==============================================================================================
@@ -10,17 +11,21 @@ render = web.template.render('templates/')
 
 # all calls are idempotent
 urls = (
-    '/', 'index',                               # GET only
-    '/thermostats/?', 'deviceList',             # GET only
-    '/thermostats/(\d+)/?',    'thermostat',    # GET only
-    '/thermostats/(\d+)/id',   'thermostatid',  # GET only
-    '/thermostats/(\d+)/temp', 'temp',          # GET only
-    '/thermostats/(\d+)/name', 'name',        # GET, PUT
-    '/thermostats/(\d+)/name/([A-Za-z0-9\-\_]+)', 'setname',  # PUT
-    '/thermostats/(\d+)/mode', 'mode',          # GET, PUT
-    '/thermostats/(\d+)/cool', 'cool',          # GET, PUT
-    '/thermostats/(\d+)/heat', 'heat',          # GET, PUT
-    '/thermostats/(\d+)/fan',  'fan',           # GET, PUT
+    '/', 'index',
+    '/thermostats/?', 'thermostats',
+    '/thermostats/(\d+)/?',    'thermostat',
+    '/thermostats/(\d+)/id/?',   'thermostatid',
+    '/thermostats/(\d+)/temp/?', 'temp',
+    '/thermostats/(\d+)/name/?', 'name',
+    '/thermostats/(\d+)/name/([A-Za-z0-9\-\_]+)', 'setname',
+    '/thermostats/(\d+)/cool/?', 'cool',
+    '/thermostats/(\d+)/cool/(\d+)', 'setcool',
+    '/thermostats/(\d+)/heat/?', 'heat',
+    '/thermostats/(\d+)/heat/(\d+)', 'setheat',
+    '/thermostats/(\d+)/fan/?',  'fan',
+    '/thermostats/(\d+)/fan/(\d+)',  'setfan',
+    '/thermostats/(\d+)/mode/?', 'mode',
+    '/thermostats/(\d+)/mode/(\d+)', 'setmode',
 )
 
 
@@ -46,6 +51,19 @@ def getUniqueID():
 def getThermostat(UID):
     return next((therm for therm in database.Thermostats if therm.ID == int(UID)), None)
 
+def getURL(path = None):
+    myURL = web.ctx.path
+    if path is not None:
+        if myURL[len(myURL) - 1] is '/':
+            return myURL + path
+        else:
+            return myURL + '/' + path
+    else:
+        return myURL
+
+def link(href, method, rel):
+    return {'href': href, 'rel': rel, 'method': method }
+
 class Database(object):
     def __init__(self, Thermostats):
         self._Thermostats = Thermostats
@@ -59,12 +77,11 @@ class Thermostat(object):
      def __init__(self, ID, Name, OperatingMode):
         self._ID = ID
         self._CurrentTemp = 66
-
         self.Name = Name
         self.OperatingMode = OperatingMode
         self.FanMode = FanMode.AUTO
-        self.SetPoint = None
-        self.CoolPoint = None
+        self.HeatPoint = 62
+        self.CoolPoint = 75
 
      @property
      def ID(self):
@@ -72,28 +89,30 @@ class Thermostat(object):
 
      @property
      def CurrentTemp(self):
-         return self._CurrentTemp
+         return random.randint(65, 67)
 
-def link(href, rel, method):
-    return {'href': href, 'rel': rel, 'method': method }
 
-class index:
-    def GET(self):
-        indexStr = [{ "links": {
-                        "href": "/thermostats",
-                        "rel": "list",
-                        "method": "GET"
-                     }}]
-        # return json.dumps(indexStr, sort_keys = True, indent = 4)
-        return niceFormat(indexStr)
 """ ========================================= GLOBALS ========================================= """
 
-myName = 'Brien'
 uniqueID = 0
 database = Database([
-    Thermostat(getUniqueID(), "Main-Floor Thermostat", FanMode.AUTO),
-    Thermostat(getUniqueID(), "Basement Thermostat", FanMode.AUTO)
+    Thermostat(getUniqueID(), "Main-Floor Thermostat", OperatingMode.OFF),
+    Thermostat(getUniqueID(), "Basement Thermostat", OperatingMode.OFF),
 ])
+
+links = {
+    'thermostats': '/thermostats',
+    'thermostat': '/thermostat/<number>',
+    'operatingmode': 'mode',
+    'name': 'name',
+    'coolpoint': 'cool',
+    'heatpoint': 'heat',
+    'fanmode': 'fan',
+    'currenttemp': 'temp',
+    'num': '<num>',
+    'id': '<id>',
+    'str': '<str>'
+}
 
 """ ======================================= END GLOBALS ======================================= """
 
@@ -106,42 +125,261 @@ if __name__ == "__main__":
 
 
 
+""" ========================================= HANDLERS ========================================= """
 
 
-
-
-class deviceList:
+class index:
     def GET(self):
-        thermoJSON = [{'name': therm.Name, 'ID': therm.ID} for therm in database.Thermostats]
-        web.header('Content-Type', 'application/json')
+        indexStr = [{ "links": {
+                        "href": "/thermostats",
+                        "rel": "list",
+                        "method": "GET"
+                     }}]
+        return niceFormat(indexStr)
+
+
+class thermostats:
+    def GET(self):
+        thermoJSON = [{
+            'name': therm.Name,
+            'ID': therm.ID,
+            'links': [link(getURL(), 'GET', 'self'), link(getURL(links['id']), 'GET', 'self')]
+            } for therm in database.Thermostats]
         return niceFormat(thermoJSON)
+
+    def PUT(self):
+        return web.notfound()
+    def POST(self):
+        return web.notfound()
+    def DELETE(self):
+        return web.notfound()
 
 
 class thermostat:
     def GET(self, UID):
-        thermo = database.Thermostats[int(UID)]
-        thermoJSON = {'name': thermo.Name, 'ID': thermo.ID }
-        web.header('Content-Type', 'application/json')
-        return niceFormat(thermoJSON)
+        therm = getThermostat(UID)
+        if therm is None:
+            return web.badrequest('The thermostat ID specified does not exist.')
+        else:
+
+            thermoJSON = [{
+                'name': therm.Name,
+                'ID': therm.ID,
+                'CurrentTemp': therm.CurrentTemp,
+                'OperatingMode': therm.OperatingMode,
+                'CurrentTemp': therm.CurrentTemp,
+                'OperatingMode': str(therm.OperatingMode),
+                'CoolPoint': therm.CoolPoint,
+                'HeatPoint': therm.HeatPoint,
+                'FanMode': str(therm.FanMode),
+                'links' : [
+                    link(getURL(), 'GET', 'self'),
+                    link(getURL(links['name']), 'GET', 'self'),
+                    link(getURL(links['coolpoint']), 'GET', 'self'),
+                    link(getURL(links['heatpoint']), 'GET', 'self'),
+                    link(getURL(links['operatingmode']), 'GET', 'self'),
+                    link(getURL(links['fanmode']), 'GET', 'self'),
+                    link(getURL(links['currenttemp']), 'GET', 'self'),
+                    link(getURL(links['operatingmode']), 'GET', 'self'),
+
+                ]
+            }]
+
+            return niceFormat(thermoJSON)
+
+    def PUT(self, UID):
+        return web.notfound()
+    def POST(self, UID):
+        return web.notfound()
+    def DELETE(self, UID):
+        return web.notfound()
+
+
+class thermostatid:
+    def GET(self, UID):
+        therm = getThermostat(UID)
+        if therm is None:
+            return web.badrequest()
+        else:
+            currentTemp = [{
+                'ID': therm.ID,
+                'links': [link(getURL(), 'GET', 'self')]
+            }]
+
+        return niceFormat(currentTemp)
+
+    def PUT(self, UID):
+        return web.notfound()
+    def POST(self, UID):
+        return web.notfound()
+    def DELETE(self, UID):
+        return web.notfound()
 
 
 class temp:
     def GET(self, UID):
         therm = getThermostat(UID)
         if therm is None:
-            return web.badrequest('The thermostat ID specified does not exist.')
+            return web.badrequest()
         else:
-            testStr = 'This is a test. Do NOT panic. The thermostat you selected is '
-            testStr += therm.Name + ' and it is about to go nuclear. I guess \
-             it wasn\'t really a test then.\n'
+            currentTemp = [{
+                'currentTemp': therm.CurrentTemp,
+                'links': [link(getURL(), 'GET', 'self')]
+            }]
 
-        return testStr
+        return niceFormat(currentTemp)
+
+    def PUT(self, UID):
+        return web.notfound()
+    def POST(self, UID):
+        return web.notfound()
+    def DELETE(self, UID):
+        return web.notfound()
 
 
 class name:
     def GET(self, UID):
-        return 'GET on name\n'
+        therm = getThermostat(UID)
+        if therm is None:
+            return web.badrequest()
+        else:
+            thermStr = [{
+                'Name': therm.Name,
+                'links': [
+                    link(getURL(), 'GET', 'self'),
+                    link(getURL(links['str']), 'PUT', 'edit'),
+                ]
+            }]
+
+            return niceFormat(thermStr)
+
+    def PUT(self, UID):
+        return web.notfound()
+    def POST(self, UID):
+        return web.notfound()
+    def DELETE(self, UID):
+        return web.notfound()
+
 
 class setname:
     def PUT(self, UID, name):
-        return 'PUT on name. Value provided is ' + name + '\n'
+        therm = getThermostat(UID)
+        if therm is None:
+            return web.badrequest()
+        else:
+            therm.Name = name
+            thermStr = [{
+                'Name': therm.Name,
+                'links': [
+                    link(getURL(), 'PUT', 'edit'),
+                ]
+            }]
+
+            return niceFormat(thermStr)
+
+    def GET(self, UID, name):
+        return web.notfound()
+    def POST(self, UID, name):
+        return web.notfound()
+    def DELETE(self, UID, name):
+        return web.notfound()
+
+
+class cool:
+    def GET(self, UID):
+        therm = getThermostat(UID)
+        if therm is None:
+            return web.badrequest()
+        else:
+            coolPoint = [{
+                'CoolPoint': therm.CoolPoint,
+                'links': [
+                    link(getURL(), 'GET', 'self'),
+                    link(getURL(links['num']), 'PUT', 'edit')
+                ]
+            }]
+
+        return niceFormat(coolPoint)
+
+    def PUT(self, UID):
+        return web.notfound()
+    def POST(self, UID):
+        return web.notfound()
+    def DELETE(self, UID):
+        return web.notfound()
+
+
+class setcool:
+    def PUT(self, UID, temp):
+        therm = getThermostat(UID)
+        t = int(temp)
+        if therm is None or t < 30 or t > 100:
+            return web.badrequest()
+        else:
+            therm.CoolPoint = t
+            coolPoint = [{
+                'CoolPoint': therm.CoolPoint,
+                'links': [ link(getURL(), 'PUT', 'edit') ]
+            }]
+
+        return niceFormat(coolPoint)
+
+    def GET(self, UID, temp):
+        return web.notfound()
+    def POST(self, UID, temp):
+        return web.notfound()
+    def DELETE(self, UID, temp):
+        return web.notfound()
+
+""" ====================================== DONE ====================================== """
+
+class heat:
+    def GET(self, UID):
+        therm = getThermostat(UID)
+        if therm is None:
+            return web.badrequest()
+        else:
+            heatPoint = [{
+                'HeatPoint': therm.HeatPoint,
+                'links': [
+                    link(getURL(), 'GET', 'self'),
+                    link(getURL(links['num']), 'PUT', 'edit')
+                ]
+            }]
+
+        return niceFormat(heatPoint)
+
+    def PUT(self, UID):
+        return web.notfound()
+    def POST(self, UID):
+        return web.notfound()
+    def DELETE(self, UID):
+        return web.notfound()
+
+
+class setheat:
+    def PUT(self, UID, temp):
+        therm = getThermostat(UID)
+        t = int(temp)
+        if therm is None or t < 30 or t > 100:
+            return web.badrequest()
+        else:
+            therm.HeatPoint = t
+            heatPoint = [{
+                'HeatPoint': therm.HeatPoint,
+                'links': [ link(getURL(), 'PUT', 'edit') ]
+            }]
+
+        return niceFormat(heatPoint)
+
+    def GET(self, UID, temp):
+        return web.notfound()
+    def POST(self, UID, temp):
+        return web.notfound()
+    def DELETE(self, UID, temp):
+        return web.notfound()
+
+
+class setmode:
+    def PUT(self, UID, mode):
+        return mode
